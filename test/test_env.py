@@ -1,6 +1,6 @@
 from unittest import TestCase
-from eptoolz.config.envcheck import EnvCheck
-from eptoolz.config.config import EPConfig
+from eptoolz.env.envcheck import EnvCheck
+from eptoolz.env.env import EPEnvironment
 import tempfile
 import os
 import sys
@@ -10,6 +10,7 @@ class TestEnvCheckFail(TestCase):
 
     def setUp(self):
         self.envck = EnvCheck('./tmpep')
+        sys.path.insert(1, self.envck.envpath)
 
     def test_check_path_fail(self):
         self.assertRaises(FileNotFoundError, self.envck.check_path)
@@ -39,21 +40,8 @@ class TestEnvCheckSuccess(TestCase):
 
         self.tmp = tempfile.TemporaryDirectory()
         self.envck = EnvCheck(self.tmp.name)
-        with open(os.path.join(self.tmp.name, "ExpandObjects"), 'w'):
-            ...
-        with open(os.path.join(
-                self.tmp.name, "Energy+.schema.epJson"), 'w'):
-            ...
-        with open(os.path.join(self.tmp.name, "ConvertInputFormat"), 'w'):
-            ...
-
-        os.mkdir(os.path.join(self.tmp.name, "pyenergyplus"))
-
-        with open(os.path.join(self.tmp.name,
-                  "pyenergyplus", "__init__.py"), 'w'):
-            ...
-        with open(os.path.join(self.tmp.name, "pyenergyplus", "api.py"), 'w'):
-            ...
+        sys.path.insert(1, self.envck.envpath)
+        fake_work_dir(self.tmp.name)
 
     def test_check_path_success(self):
         self.assertTrue(self.envck.check_path())
@@ -68,7 +56,6 @@ class TestEnvCheckSuccess(TestCase):
         self.assertTrue(self.envck.check_convertinputformat())
 
     def test_check_pyenergyplus_success(self):
-        sys.path.insert(0, self.envck.envpath)
         self.assertTrue(self.envck.check_pyenergyplys())
 
     def test_check_health_success(self):
@@ -76,3 +63,40 @@ class TestEnvCheckSuccess(TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+
+class TestEnv(TestCase):
+
+    def setUp(self):
+        self.env = EPEnvironment
+        self.tmp = tempfile.TemporaryDirectory()
+        fake_work_dir(self.tmp.name)
+
+    def test_output(self):
+        ...
+
+    def test_env(self):
+        ...
+
+
+def fake_work_dir(tempdir):
+    with open(os.path.join(tempdir, "ExpandObjects"), 'w'):
+        ...
+    with open(os.path.join(
+            tempdir, "Energy+.schema.epJson"), 'w'):
+        ...
+    with open(os.path.join(tempdir, "ConvertInputFormat"), 'w'):
+        ...
+
+    os.mkdir(os.path.join(tempdir, "pyenergyplus"))
+
+    with open(os.path.join(tempdir,
+                           "pyenergyplus", "__init__.py"), 'w'):
+        ...
+
+    for n in ("api.py", "common.py", "func.py", "plugin.py",
+              "runtime.py", "dataransfer.py"):
+        with open(os.path.join(tempdir,
+                               "pyenergyplus", n), 'w') as f:
+            f.write("def foo(): print('imported!')")
+

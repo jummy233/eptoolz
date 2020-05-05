@@ -89,21 +89,25 @@ class EnvCheck:
 
     @report("pyenergyplus")
     def check_pyenergyplys(self) -> bool:
-        pyenergyplus = os.path.join(self.envpath, "pyenergyplus")
-        print(pyenergyplus)
-        if not (os.path.exists(pyenergyplus) and os.path.isdir(pyenergyplus)):
+        pyep = os.path.join(self.envpath, "pyenergyplus")
+        if not (os.path.exists(pyep) and os.path.isdir(pyep)):
             logging.error("pyenergyplus module doesn't exists."
-                          + " check your EnergyPlus install folder")
+                          + " check your EnergyPlus installation folder")
             return False
         try:
             # insert E+ installation directory in to PATHPATH
             # so we can import pyenergyplus after wards.
-            print(sys.path)
-            __import__('subprocess').run(["tree", sys.path[0]])
-            import pyenergyplus
+            import pyenergyplus.api
+            import pyenergyplus.common
+            import pyenergyplus.plugin
+            import pyenergyplus.runtime
+            import pyenergyplus.func
+            import pyenergyplus.dataransfer
+
         except ImportError:
-            logging.error("cannot import pyenergyplus"
-                          + "something wrong with the PYTHONPATH\n"
+            logging.error("cannot import pyenergyplus, "
+                          + "it could either because damaged pyenergyplus or "
+                          + "no pyenergyplus shipped with energy plus"
                           + "check if pyenergyplus is in E+ directory?")
             return False
         return True

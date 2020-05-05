@@ -20,7 +20,7 @@ class Field:
         pass
 
 
-class IdfObjectMeta(type):
+class EPObjectMeta(type):
     """
     Magic class.
     """
@@ -32,7 +32,7 @@ class IdfObjectMeta(type):
         ...
 
 
-class IdfObject(metaclass=IdfObjectMeta):
+class EPObject(metaclass=EPObjectMeta):
     """
     Python representation of Idf input objects.
     """

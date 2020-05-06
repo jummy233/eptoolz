@@ -8,7 +8,7 @@ from eptoolz.wrapper import EPWrapper
 class EPErr(EPWrapper):
 
     def __init__(self, env: EPEnvironment):
-        super().__init__(env)
+        self.env = env
 
     @staticmethod
     def parse(cls, path):

@@ -8,9 +8,6 @@ from abc import ABC, abstractmethod
 
 class EPWrapper(ABC):
 
-    def __init__(self, env):
-        self.env = env
-
     @abstractmethod
     @staticmethod
     def parse(cls, path) -> 'EPWrapper':

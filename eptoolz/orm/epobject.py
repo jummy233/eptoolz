@@ -1,23 +1,7 @@
 from typing import Tuple, List, Dict
+from inspect import Parameter, Signature, BoundArguments
 from collections import OrderedDict
-
-
-class Field:
-    """
-    attributes for IdfObject fields
-    """
-
-    def __init__(self, name=None):
-        self.name = name
-
-    def __get__(self, instance, owner):
-        pass
-
-    def __set__(self, instance, value):
-        pass
-
-    def __delete__(self, instance):
-        pass
+from eptoolz.orm.types import Field
 
 
 class EPObjectMeta(type):
@@ -28,8 +12,16 @@ class EPObjectMeta(type):
     def __prepare__(cls, name, bases):
         return OrderedDict()
 
-    def __new__(cls, bases, clsdict: Dict):
-        ...
+    def __new__(cls, clsname, bases, clsdict: OrderedDict):
+        fields = [key for key, val in clsdict.items()
+                  if isinstance(val, Field)]
+        for name in fields:
+            clsdict[name].name = name
+        clsobj = super().__new__(cls, clsname, bases, dict(clsdict))
+        sig = Signature([Parameter(name, Parameter.POSITIONAL_OR_KEYWORD)
+                         for name in fields])
+        setattr(clsobj, '__signature__', sig)
+        return clsobj
 
 
 class EPObject(metaclass=EPObjectMeta):
@@ -37,12 +29,24 @@ class EPObject(metaclass=EPObjectMeta):
     Python representation of Idf input objects.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        bound: BoundArguments = self.__signature__.bind(*args, **kwargs)
+        for name, value in bound.arguments.items():
+            setattr(self, name, value)
+
+    def __eq__(self, other) -> bool:
+        """
+        Two EPObject are equal if their has the same attributes and
+        values of the attributes are the same.
+        """
+        return self.__dict__ == other.__dict__
+
+    def __str__(self) -> str:
         ...
 
-    def __str__(self):
-        ...
-
-    def __repr__(self):
-        ...
-
+    def __repr__(self) -> str:
+        try:
+            name = getattr(self, 'name')
+            return(f"<EPObject {name}>")
+        except AttributeError:
+            return("<Anynomous EPObject>")

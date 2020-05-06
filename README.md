@@ -2,8 +2,9 @@
 
 ```python
 from eptoolz.orm import EPObject
-from eptoolz.type import Real, String, Name
-from eptoolz import EnergyPlus
+from eptoolz.orm.types import Real, String, Name
+from eptoolz.env import EPEnvironment
+from eptoolz import EnergyPlus, EPOutput
 
 output = './John/Doe/'
 env = '/home/John/Doe/Opt/EnergyPlus/'
@@ -11,10 +12,14 @@ idd = '.myidd.idd'
 idf = '/John/Doe/myidf.idf'
 epw = '../ShanghaiMinhang.epw'
 
-env = EPEnv(env=env, idd=idd, idf=idf, epw=epw, output=output)
+env = EPEnvironment(env=env, idd=idd, idf=idf, epw=epw, output=output)
+env.config.expandobjs = True
+
 ep = EnergyPlus(env)
 
-myidd = __import__('myidd.idd')
+# import idd file directly. It will be automatically
+# converted into python class
+
 # substitute material object in a given idf
 
 material1 = ep.Site.Material(
@@ -26,8 +31,7 @@ material1 = ep.Site.Material(
     specific_heat= 920.48,
     thermal_absorptance= 0.9,
     thickness= 0.1014984,
-    vsdisible_absorptance= 0.93
-)
+    vsdisible_absorptance= 0.93)
 ep.idf["A2 - 4 IN DENSE FACE BRICK"] = material1
 
 # modify one field in idf
@@ -43,12 +47,25 @@ material2 = ep.Site.Material(
     specific_heat= 92.48,
     thermal_absorptance= 0.9,
     thickness= 0.1014984,
-    vsdisible_absorptance= 0.93
-)
+    vsdisible_absorptance= 0.93)
 ep.idf.append(material2)
 
-# output idf to another file
-ep.idf.write('../idf2.idf')
+# change on idf file specified in env.
+ep.commit()
+
+# run ep. it is a sequential implementation for simplicity.
+# if you need non block run you can use
+# ep.async_run()
+output: EPOutput = ep.run()
+
+# check if there is any error
+if output.err.fatal or output.err.severe:
+    print(output.err.fatal)
+    print(output.err.severe)
+else:
+    for key, val in output.eso:
+        if key == "Surface Outside Face Sunlit Area":
+            print(val)
 
 
 ```

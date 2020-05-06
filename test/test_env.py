@@ -1,6 +1,6 @@
 from unittest import TestCase
 from eptoolz.env.envcheck import EnvCheck
-from eptoolz.env.env import EPEnvironment
+from eptoolz.env.env import EPEnvironment, Config
 import tempfile
 import os
 import sys
@@ -63,6 +63,30 @@ class TestEnvCheckSuccess(TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+
+class TestConfig(TestCase):
+
+    def setUp(self):
+        self.config = Config()
+
+    def test_access(self):
+        self.assertFalse(self.config['convert'])
+        self.assertFalse(self.config['annual'])
+        self.assertFalse(self.config['design_day'])
+        self.assertFalse(self.config['expandobjects'])
+        self.assertFalse(self.config['readvars'])
+        self.assertTrue(self.config['output_prefix'] == '')
+        self.assertTrue(self.config['output_sufix'] == '')
+
+    def test_setitem_fail(self):
+        """ config doesn't support __setitem__ with arbitray keys """
+        with self.assertRaises(KeyError):
+            self.config['arbitray key'] = True
+
+    def test_setitem_success(self):
+        self.config['convert'] = True
+        self.assertTrue(self.config['convert'])
 
 
 class TestEnv(TestCase):

@@ -1,6 +1,0 @@
-"""
-Parse html output.
-"""
-
-
-

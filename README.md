@@ -4,7 +4,7 @@
 from eptoolz.orm import EPObject
 from eptoolz.orm.types import Real, String, Name
 from eptoolz.env import EPEnvironment
-from eptoolz import EnergyPlus, EPOutput
+from eptoolz import EnergyPlus
 
 output = './John/Doe/'
 env = '/home/John/Doe/Opt/EnergyPlus/'
@@ -13,9 +13,8 @@ idf = '/John/Doe/myidf.idf'
 epw = '../ShanghaiMinhang.epw'
 
 env = EPEnvironment(env=env, idd=idd, idf=idf, epw=epw, output=output)
-env.config.expandobjs = True
 
-ep = EnergyPlus(env)
+ep = EnergyPlus(env, converted=True, expandobjects=True)
 
 # import idd file directly. It will be automatically
 # converted into python class

@@ -7,8 +7,8 @@ import tempfile
 import os.path as path
 from eptoolz.env.envcheck import EnvCheck
 from eptoolz.exceptions import SetAfterCreateError
-from collections import UserDict
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
+import logging
 
 
 class EPEnvironment:
@@ -26,6 +26,7 @@ class EPEnvironment:
     """
 
     class __EPEnvironment:
+
         def __init__(self, env: str, idd: str, idf: str, epw: str,
                      output: str = "", **kwargs):
             """
@@ -35,11 +36,12 @@ class EPEnvironment:
 
             config can only be modified but not replaced.
 
-            @param env:     energyplus install folder path.
-            @param idd:     idd file path.
-            @param idf:     idf file path.
-            @param epw:     epw file path.
-            @param output:  path for E+ output files.
+            @param env:      energyplus install folder path.
+            @param idd:      idd file path.
+            @param idf:      idf file path.
+            @param epw:      epw file path.
+            @param output:   path for E+ output files.
+            @param **kwargs: dictionary, used to initialize Config
             """
 
             self.env = env
@@ -48,29 +50,11 @@ class EPEnvironment:
             self.epw = epw
             self.output = output
 
-        def check(self) -> bool:
-            envcheck = EnvCheck(envpath=self.__env)
+        def check(self, env) -> bool:
+            envcheck = EnvCheck(envpath=env)
             return envcheck.check_health()
 
-        @property
-        def config(self):
-            return self.__config
-
-        @config.setter
-        def config(self, value: Dict):
-            tmp = Config()
-            if value == {}:
-                self.__config = tmp
-            elif all(key in tmp.keys() for key in value):
-                tmp.update(value)
-                self.__config = tmp
-            else:
-                raise ValueError("Unsupported config argument")
-
-        @property
-        def is_created(self):
-            return True
-
+        # properties below are readonly.
         @property
         def env(self):
             return self.__env
@@ -78,26 +62,36 @@ class EPEnvironment:
         @env.setter
         def env(self, value):
             """ check env before set it into config """
-            if self.is_created:
+            if self.__dict__.get('__env'):
                 raise SetAfterCreateError
-            if self.check():
-                self.__env = value
+            try:
+                __import__('pdb').set_trace()
+                if self.check(value):
+                    self.__env = value
+            except AttributeError as e:
+                logging.error(e)
+            except Exception as e:
+                logging.error(e)
 
         @property
         def output(self):
             """ if no output file is specified then create tmp folder """
-            if not self.output:
+            if not self.__dict__.get('__output'):
                 self.output = tempfile.TemporaryDirectory()
             return self.__output
 
         @output.setter
         def output(self, value):
-            if self.is_created:
+            print("asd")
+            if self.__dict__.get('__output'):
                 raise SetAfterCreateError
-            if not path.exists(value):
+            if isinstance(value, tempfile.TemporaryDirectory):
+                self.__output = cast(tempfile.TemporaryDirectory, value).name
+            elif isinstance(value, str) and not path.exists(value):
                 with open(path.abspath(value), 'w'):
-                    ...
-            self.__output = value
+                    self.__output = value
+            else:
+                raise ValueError("Unexpected value for output.")
 
         @property
         def idd(self):
@@ -105,11 +99,11 @@ class EPEnvironment:
 
         @idd.setter
         def idd(self, value):
-            if self.is_created:
+            if self.__dict__.get('__idd'):
                 raise SetAfterCreateError
             if not path.exists(value):
                 raise FileExistsError("idd is not a real path")
-            return self.idd
+            self._idd = value
 
         @property
         def idf(self):
@@ -117,11 +111,11 @@ class EPEnvironment:
 
         @idf.setter
         def idf(self, value):
-            if self.is_created:
+            if self.__dict__.get('__idf'):
                 raise SetAfterCreateError
             if not path.exists(value):
                 raise FileExistsError("idf is not a real path")
-            return self.idf
+            self.__idf = value
 
         @property
         def epw(self):
@@ -129,39 +123,22 @@ class EPEnvironment:
 
         @epw.setter
         def epw(self, value):
-            if self.is_created:
+            if self.__dict__.get('__epw'):
                 raise SetAfterCreateError
             if not path.exists(value):
                 raise FileExistsError("epw is npot a real path")
-            return self.__epw
+            self.__epw = value
 
     instance = None
 
     def __init__(self, *args, **kwargs):
         if not type(self).instance:
-            type(self).instance = type(self).EPEnvironment(*args, **kwargs)
+            type(self).instance = type(self).__EPEnvironment(*args, **kwargs)
 
     def __getattr__(self, name):
         return getattr(self.instance, name)
 
+    def __setattr__(self, name, value):
+        setattr(self.instance, name, value)
 
-class Config(UserDict):
-    """
-    default config, it can be override at any time.
-    Config includes extra energyplus argument flags.
-    """
 
-    def __init__(self):
-        super().__init__()
-        self['convert'] = False
-        self['annual'] = False
-        self['design_day'] = False
-        self['expandobjects'] = False
-        self['readvars'] = False
-        self['output_prefix'] = ''
-        self['output_sufix'] = ''
-
-    def __setitem__(self, key, value):
-        if key not in self.keys():
-            raise KeyError("Config doesn't allow arbitrary keys.")
-        super().__setitem__(key, value)

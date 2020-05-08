@@ -111,7 +111,3 @@ class EnvCheck:
                           + "check if pyenergyplus is in E+ directory?")
             return False
         return True
-
-#     @report("E+ version >= 9.3")
-#     def check_version(self):
-#         import

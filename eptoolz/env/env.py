@@ -5,6 +5,7 @@ includes path to EnergyPlus, output path, E+ parameters etc.
 """
 import tempfile
 import os.path as path
+import sys
 from eptoolz.env.envcheck import EnvCheck
 from eptoolz.exceptions import SetAfterCreateError
 from typing import Dict, Optional, cast
@@ -27,8 +28,8 @@ class EPEnvironment:
 
     class __EPEnvironment:
 
-        def __init__(self, env: str, idd: str, idf: str, epw: str,
-                     output: str = "", **kwargs):
+        def __init__(self, env: str, idf: str, epw: str,
+                     output=None, idd=None,  **kwargs):
             """
             Prepare the enssential environment for execution
             Except conifg, once the environment is created its properties
@@ -44,6 +45,7 @@ class EPEnvironment:
             @param **kwargs: dictionary, used to initialize Config
             """
 
+            sys.path.insert(1, env)  # add env to path.
             self.env = env
             self.idd = idd
             self.idf = idf
@@ -55,6 +57,8 @@ class EPEnvironment:
             return envcheck.check_health()
 
         # properties below are readonly.
+        # property setters are only used in the constructor.
+        # no properties are allowed to be set outside the class.
         @property
         def env(self):
             return self.__env
@@ -62,31 +66,26 @@ class EPEnvironment:
         @env.setter
         def env(self, value):
             """ check env before set it into config """
-            if self.__dict__.get('__env'):
-                raise SetAfterCreateError
             try:
-                __import__('pdb').set_trace()
                 if self.check(value):
                     self.__env = value
-            except AttributeError as e:
-                logging.error(e)
             except Exception as e:
                 logging.error(e)
 
         @property
         def output(self):
-            """ if no output file is specified then create tmp folder """
-            if not self.__dict__.get('__output'):
-                self.output = tempfile.TemporaryDirectory()
             return self.__output
 
         @output.setter
         def output(self, value):
-            print("asd")
-            if self.__dict__.get('__output'):
-                raise SetAfterCreateError
-            if isinstance(value, tempfile.TemporaryDirectory):
-                self.__output = cast(tempfile.TemporaryDirectory, value).name
+            """
+            if no output path is defined then create a tempdir for output.
+            """
+            if '__output' in self.__dict__ and self.__output is None:
+                tmp = tempfile.TemporaryDirectory()
+                self.__output = tmp.name
+                logging.warning("no output file is specified,"
+                                + f" output will goes to {tmp.name}")
             elif isinstance(value, str) and not path.exists(value):
                 with open(path.abspath(value), 'w'):
                     self.__output = value
@@ -95,15 +94,19 @@ class EPEnvironment:
 
         @property
         def idd(self):
+            """
+            If no idd file specified use jdd comes with E+ installation
+            by default.
+            """
+            if '__idd' in self.__dict__ and self.__idd is None:
+                self.__idd = path.join(self.env, "Energy+.schema.epJson")
             return self.__idd
 
         @idd.setter
         def idd(self, value):
-            if self.__dict__.get('__idd'):
-                raise SetAfterCreateError
             if not path.exists(value):
                 raise FileExistsError("idd is not a real path")
-            self._idd = value
+            self.__idd = value
 
         @property
         def idf(self):
@@ -111,8 +114,6 @@ class EPEnvironment:
 
         @idf.setter
         def idf(self, value):
-            if self.__dict__.get('__idf'):
-                raise SetAfterCreateError
             if not path.exists(value):
                 raise FileExistsError("idf is not a real path")
             self.__idf = value
@@ -126,10 +127,10 @@ class EPEnvironment:
             if self.__dict__.get('__epw'):
                 raise SetAfterCreateError
             if not path.exists(value):
-                raise FileExistsError("epw is npot a real path")
+                raise FileExistsError("epw is not a real path")
             self.__epw = value
 
-    instance = None
+    instance: Optional[__EPEnvironment] = None
 
     def __init__(self, *args, **kwargs):
         if not type(self).instance:
@@ -139,6 +140,8 @@ class EPEnvironment:
         return getattr(self.instance, name)
 
     def __setattr__(self, name, value):
-        setattr(self.instance, name, value)
+        raise SetAfterCreateError("environment is not settable")
 
-
+    def __del__(self):
+        if self.instance is not None and self.instance.env in sys.path:
+            sys.path.remove(self.instance.env)
